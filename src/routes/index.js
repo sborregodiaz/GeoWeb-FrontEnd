@@ -9,10 +9,12 @@ import { actions as mapActions } from '../redux/modules/mapReducer';
 import { actions as adagucActions } from '../redux/modules/adagucReducer';
 import { actions as panelsActions } from '../redux/modules/panelsReducer';
 import { actions as drawActions } from '../redux/modules/drawReducer';
+// import { actions as triggerActions } from '../redux/modules/recentTriggerReducer';
 import { Route, IndexRoute } from 'react-router';
 import { connect } from 'react-redux';
 
 import TasksContainer from '../containers/TasksContainer';
+import OldTriggersContainer from '../containers/OldTriggersContainer';
 import TriggersContainer from '../containers/TriggersContainer';
 
 import ProgtempManagementPanel from '../components/Management/ProgtempManagementPanel';
@@ -48,7 +50,8 @@ const mapStateToHeaderProps = state => ({
   panelsProperties: state.panelsProperties,
   fullState: state,
   urls: state.urls,
-  adagucProperties: state.adagucProperties
+  adagucProperties: state.adagucProperties,
+  recentTriggerProperties: state.recentTriggerProperties
 });
 const mapDispatchToHeaderProps = function (dispatch) {
   return ({
@@ -57,6 +60,7 @@ const mapDispatchToHeaderProps = function (dispatch) {
     adagucActions,
     userActions,
     panelsActions
+    // triggerActions
   });
 };
 const mapStateToSidebarProps = state => ({
@@ -94,6 +98,7 @@ const mapDispatchToLayerManagerProps = function (dispatch) {
     dispatch,
     panelsActions,
     adagucActions
+    // triggerActions
   });
 };
 const mapDispatchToSigmetProps = function (dispatch) {
@@ -105,20 +110,25 @@ const mapDispatchToSigmetProps = function (dispatch) {
     adagucActions
   });
 };
-const mapStateToMapProps = state => ({
-  drawProperties: { ...state.drawProperties },
-  mapProperties: { ...state.mapProperties },
-  adagucProperties: state.adagucProperties,
-  panelsProperties: { ...state.panelsProperties },
-  urls: state.urls,
-  user: state.userProperties
-});
+const mapStateToMapProps = state => {
+  return {
+    drawProperties: { ...state.drawProperties },
+    mapProperties: { ...state.mapProperties },
+    adagucProperties: state.adagucProperties,
+    recentTriggerProperties: state.recentTriggerProperties,
+    panelsProperties: { ...state.panelsProperties },
+    urls: state.urls,
+    user: state.userProperties
+  };
+};
 
 const mapStateToLayerManagerProps = state => ({
   adagucProperties: state.adagucProperties,
   panelsProperties: state.panelsProperties,
   mapProperties: state.mapProperties,
   drawProperties: state.drawProperties,
+  recentTriggersProperties: state.recentTriggerProperties,
+  recentTriggersTestProperties: state.recentTriggerProperties,
   urls: state.urls
 });
 
@@ -153,8 +163,9 @@ export const createRoutes = (store) => {
     urls: state.urls,
     sources: state.adagucProperties.sources
   }), mapDispatchToSigmetProps)(SigmetsContainer));
-  const taf = connect(mapStateToTafsContainerProps, mapDispatchToLayerManagerProps)(TafsContainer);
   const trigger = React.createElement(connect(mapStateToLayerManagerProps, mapDispatchToLayerManagerProps)(TriggersContainer));
+  const taf = connect(mapStateToTafsContainerProps, mapDispatchToLayerManagerProps)(TafsContainer);
+  const oldtrigger = React.createElement(connect(mapStateToLayerManagerProps, mapDispatchToLayerManagerProps)(OldTriggersContainer));
   const manageLeft = React.createElement(SidebarContainer);
   // Location
   const progmanPanel = connect(mapStateToManagementPanelProps)(ProgtempManagementPanel);
@@ -203,8 +214,18 @@ export const createRoutes = (store) => {
           </Route>
 
         </Route>
+
+        <Route path='triggers_test' title='Triggers'>
+          {/* Here all trigger routes */}
+          <Route component={FooteredLayout} footer={layerManager} >
+            <Route component={SidebarredLayout} secondLeftSidebar={trigger} leftSidebar={leftSidebar} rightSidebar={rightSidebar}>
+              <IndexRoute component={map} />
+            </Route>
+          </Route>
+
+        </Route>
         <Route path='monitoring_and_triggers' title='Monitoring & Triggers'>
-          <Route component={SidebarredLayout} secondLeftSidebar={trigger} leftSidebar={leftSidebar}>
+          <Route component={SidebarredLayout} secondLeftSidebar={oldtrigger} leftSidebar={leftSidebar}>
             <Route component={FooteredLayout} footer={layerManager} >
               <Route component={SidebarredLayout} rightSidebar={rightSidebar}>
                 <IndexRoute component={map} />

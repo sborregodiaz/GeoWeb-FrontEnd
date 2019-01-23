@@ -18,10 +18,12 @@ import { Link, hashHistory } from 'react-router';
 import PropTypes from 'prop-types';
 import moment from 'moment';
 import cloneDeep from 'lodash.clonedeep';
-import { addNotification } from 'reapop';
 import { Typeahead } from 'react-bootstrap-typeahead';
 import { GetServices } from '../utils/getServiceByName';
 import { version } from '../../package.json';
+import SockJS from 'sockjs-client';
+import { Stomp } from '@stomp/stompjs';
+import { notify } from 'reapop';
 const timeFormat = 'ddd DD MMM YYYY HH:mm [UTC]';
 const browserFullScreenRequests = [
   'mozRequestFullScreen',
@@ -33,6 +35,10 @@ class TitleBarContainer extends PureComponent {
   constructor (props) {
     super(props);
     this.setTime = this.setTime.bind(this);
+    this.setWebSocket = this.setWebSocket.bind(this);
+    this.handleOnWebSocketMessage = this.handleOnWebSocketMessage.bind(this);
+    this.showTriggerMessage = this.showTriggerMessage.bind(this);
+    this.setTriggerMessage = this.setTriggerMessage.bind(this);
     this.doLogin = this.doLogin.bind(this);
     this.doLogout = this.doLogout.bind(this);
     this.savePreset = this.savePreset.bind(this);
@@ -40,9 +46,9 @@ class TitleBarContainer extends PureComponent {
     this.sendFeedback = this.sendFeedback.bind(this);
     this.triggerService = this.triggerService.bind(this);
     this.retrieveTriggers = this.retrieveTriggers.bind(this);
-    this.gotTriggersCallback = this.gotTriggersCallback.bind(this);
+    // this.gotTriggersCallback = this.gotTriggersCallback.bind(this);
     this.fetchPresets = this.fetchPresets.bind(this);
-    this.errorTriggersCallback = this.errorTriggersCallback.bind(this);
+    // this.errorTriggersCallback = this.errorTriggersCallback.bind(this);
     this.toggleLoginModal = this.toggleLoginModal.bind(this);
     this.toggleFeedbackModal = this.toggleFeedbackModal.bind(this);
     this.toggleSharePresetModal = this.toggleSharePresetModal.bind(this);
@@ -58,12 +64,18 @@ class TitleBarContainer extends PureComponent {
     this.renderLoginModal = this.renderLoginModal.bind(this);
 
     this.render = this.render.bind(this);
+    this.handleTriggerClick = this.handleTriggerClick.bind(this);
+    // this.addTriggerTest = this.addTriggerTest.bind(this);
+    // this.setTriggerTestMessage = this.setTriggerTestMessage.bind(this);
+    // this.readJSONFileTest = this.readJSONFileTest.bind(this);
+    this.stompClient = null;
     this.inputfieldUserName = '';
     this.inputfieldPassword = '';
     this.timer = -1;
     this.inputRefs = {};
     this.state = {
       currentTime: moment().utc().format(timeFormat).toString(),
+      triggerNotifications: [],
       loginModal: this.props.loginModal,
       loginModalMessage: '',
       feedbackModalOpen: false,
@@ -78,6 +90,45 @@ class TitleBarContainer extends PureComponent {
     };
   }
 
+  // readJSONFileTest () {
+  //   const datajson = require('/nobackup/users/schouten/Triggers/trigger_2018101913063100519.json');
+  //   return datajson;
+  // }
+
+  // setTriggerTestMessage () {
+  //   const datajson = this.readJSONFileTest();
+  //   let locationamount = '';
+  //   if (datajson.locations.length === 1) {
+  //     locationamount = 'location';
+  //   } else {
+  //     locationamount = 'locations';
+  //   }
+  // return `${datajson.phenomenon.long_name} ${datajson.phenomenon.operator} than ${datajson.phenomenon.limit}
+  // ${datajson.phenomenon.unit} detected at ${datajson.locations.length} ` + locationamount;
+  // }
+
+  // addTriggerTest () {
+  //   const datajson = this.readJSONFileTest();
+  //   const { dispatch } = this.props;
+  //   dispatch(notify({
+  //     title: datajson.phenomenon.long_name,
+  //     message: this.setTriggerTestMessage(),
+  //     status: 'warning',
+  //     image: 'https://static.wixstatic.com/media/73705d_91d9fa48770e4ed283fc30da3b178041~mv2.gif',
+  //     position: 'bl',
+  //     dismissAfter: 0,
+  //     dismissible: true,
+  //     buttons: [{
+  //       name: 'Show locations',
+  //       primary: true,
+  //       onClick: (e) => { e.stopPropagation(); this.handleTriggerClick(datajson.locations); }
+  //     }, {
+  //       name: 'Remove locations',
+  //       onClick: (e) => { e.stopPropagation(); this.handleTriggerClick([]); }
+  //     }]
+  //   }));
+  // }
+
   triggerService () {
     if (!this.triggerIntervalId) {
       this.retrieveTriggers();
@@ -87,13 +138,14 @@ class TitleBarContainer extends PureComponent {
 
   retrieveTriggers () {
     const { urls } = this.props;
+    let startDate = '2018-09-05T09:00:00Z'; // moment().subtract(1, 'hours').utc().format();
     axios({
       method: 'get',
-      url: urls.BACKEND_SERVER_URL + '/triggers/gettriggers?startdate=' + moment().subtract(1, 'hours').utc().format() + '&duration=3600',
+      url: urls.BACKEND_SERVER_URL + '/triggers/gettriggers?startdate=' + startDate + '&duration=3600',
       withCredentials: true,
       responseType: 'json'
-    }).then(this.gotTriggersCallback)
-      .catch(this.errorTriggersCallback);
+    });// .then(this.gotTriggersCallback)
+    //   .catch(this.errorTriggersCallback);
   }
 
   getTriggerTitle (trigger) {
@@ -120,9 +172,9 @@ class TitleBarContainer extends PureComponent {
 
   handleTriggerClick (locations) {
     if (locations !== this.props.adagucProperties.triggerLocations) {
-      this.props.dispatch(this.props.actions.setTriggerLocations(locations));
+      this.props.dispatch(this.props.triggerActions.setTriggerLocations(locations));
     } else {
-      this.props.dispatch(this.props.actions.setTriggerLocations([]));
+      this.props.dispatch(this.props.triggerActions.setTriggerLocations([]));
     }
   }
 
@@ -132,37 +184,38 @@ class TitleBarContainer extends PureComponent {
     return adiff - bdiff;
   }
 
-  gotTriggersCallback (result) {
-    if (result.data.length > 0) {
-      result.data.filter((notification) => !this.seen(notification)).filter((trigger) =>
-        !this.props.notifications.some((not) => not.id === trigger.uuid)).sort((a, b) => this.diffWrtNow(a.triggerdate, b.triggerdate)).slice(0, 3).forEach((trigger, i) => {
-        this.props.dispatch(addNotification({
-          title: this.getTriggerTitle(trigger),
-          message: this.getTriggerMessage(trigger),
-          position: 'bl',
-          id: trigger.uuid,
-          raw: trigger,
-          status: 'error',
-          buttons: [
-            {
-              name: 'Discard',
-              primary: true
-            }, {
-              name: 'Where',
-              onClick: (e) => { e.stopPropagation(); this.handleTriggerClick(trigger.locations); }
-            }
-          ],
-          dismissible: false,
-          dismissAfter: 0,
-          allowHTML: true
-        }));
-      });
-    }
-  }
+  // gotTriggersCallback (result) {
+  //   let notifications = this.props.notifications && this.props.notifications.length > 0 ? this.props.notifications : [];
+  //   if (result.data.length > 0) {
+  //     result.data.filter((notification) => !this.seen(notification)).filter((trigger) =>
+  //       !notifications.some((not) => not.id === trigger.uuid)).sort((a, b) => this.diffWrtNow(a.triggerdate, b.triggerdate)).slice(0, 3).forEach((trigger, i) => {
+  //       this.props.dispatch(addNotification({
+  //         title: this.getTriggerTitle(trigger),
+  //         message: this.getTriggerMessage(trigger),
+  //         position: 'bl',
+  //         id: trigger.uuid,
+  //         raw: trigger,
+  //         status: 'error',
+  //         buttons: [
+  //           {
+  //             name: 'Discard',
+  //             primary: true
+  //           }, {
+  //             name: 'Where',
+  //             onClick: (e) => { e.stopPropagation(); this.handleTriggerClick(trigger.locations); }
+  //           }
+  //         ],
+  //         dismissible: false,
+  //         dismissAfter: 0,
+  //         allowHTML: true
+  //       }));
+  //     });
+  //   }
+  // }
 
-  errorTriggersCallback (error) {
-    console.error('Error occurred while retrieving triggers', error);
-  }
+  // errorTriggersCallback (error) {
+  //   console.error('Error occurred while retrieving triggers', error);
+  // }
 
   getServices () {
     const { urls, dispatch, adagucActions } = this.props;
@@ -196,6 +249,7 @@ class TitleBarContainer extends PureComponent {
   componentWillUnmount () {
     clearInterval(this.timer);
     clearInterval(this.triggerIntervalId);
+    this.socket.close();
   }
 
   componentDidMount () {
@@ -216,10 +270,70 @@ class TitleBarContainer extends PureComponent {
     }
   }
 
+  setWebSocket (message) {
+    const { handleOnWebSocketMessage } = this;
+
+    if (message === 'connect') {
+      const socket = new SockJS(this.props.urls.BACKEND_SERVER_URL + '/websocket');
+      this.stompClient = Stomp.over(socket);
+      this.stompClient.connect({}, () => {
+        this.stompClient.subscribe('/trigger/messages', function (message) {
+          const json = JSON.parse(message.body);
+          const { Notifications } = json;
+          handleOnWebSocketMessage(Notifications);
+        });
+      });
+    } else if (message === 'close') {
+      if (this.stompClient) this.stompClient.disconnect();
+    }
+  }
+
+  handleOnWebSocketMessage (Notifications) {
+    const { showTriggerMessage } = this;
+
+    this.setState({ triggerNotifications: Notifications });
+    // console.log('In WebSocket Handler', this.state.triggerNotifications);
+    showTriggerMessage();
+  }
+
+  setTriggerMessage (data) {
+    let locationmultiplicity = '';
+    const { locations, phenomenon } = data;
+    // eslint-disable-next-line camelcase
+    const { long_name, operator, limit, unit } = phenomenon;
+    if (locations.length === 1) {
+      locationmultiplicity = 'location';
+    } else {
+      locationmultiplicity = 'locations';
+    }
+    // eslint-disable-next-line camelcase
+    return `${long_name} ${operator} than ${limit} ${unit} detected at ${locations.length} ` + locationmultiplicity;
+  }
+
+  showTriggerMessage () {
+    const { triggerNotifications } = this.state;
+    // console.log('In show', triggerNotifications);
+    const { dispatch } = this.props;
+    for (let i = 0; i < triggerNotifications.length; i++) {
+      // console.log('In for loop', triggerNotifications[i]);
+      let trigger = triggerNotifications[i];
+      dispatch(notify({
+        title: trigger.phenomenon.long_name,
+        message: this.setTriggerMessage(trigger),
+        status: 'warning',
+        image: 'https://static.wixstatic.com/media/73705d_91d9fa48770e4ed283fc30da3b178041~mv2.gif',
+        position: 'bl',
+        dismissAfter: 0,
+        dismissible: true
+      }));
+    };
+  }
+
   doLogin () {
     const { user, urls } = this.props;
     const { isLoggedIn } = user;
     if (!isLoggedIn) {
+      this.setWebSocket('connect');
       axios({
         method: 'get',
         url: urls.BACKEND_SERVER_URL + '/login?username=' + this.inputfieldUserName + '&password=' + this.inputfieldPassword,
@@ -254,6 +368,7 @@ class TitleBarContainer extends PureComponent {
     }).catch(error => {
       this.setLoggedOutCallback(error.response.data.message);
     });
+    this.setWebSocket('close');
   }
 
   checkCredentials (callback) {
@@ -701,6 +816,7 @@ class TitleBarContainer extends PureComponent {
                 <span>{this.getTitleForRoute(routes[0])}</span>
               </Link>
             </NavbarBrand>
+            {/* <Button className='active' color='primary' onClick={this.addTriggerTest}>Trigger</Button> */}
           </Col>
           <Col xs='auto'>
             <Breadcrumb tag='nav'>
@@ -1150,11 +1266,10 @@ LayoutDropDown.propTypes = {
 TitleBarContainer.propTypes = {
   adagucProperties: PropTypes.object,
   recentTriggers: PropTypes.array,
-  notifications: PropTypes.array,
   loginModal: PropTypes.bool,
   routes: PropTypes.array,
   dispatch: PropTypes.func,
-  actions: PropTypes.object,
+  triggerActions: PropTypes.object,
   panelsProperties: PropTypes.object,
   user: PropTypes.object,
   userActions: PropTypes.object,

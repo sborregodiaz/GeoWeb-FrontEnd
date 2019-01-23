@@ -27,7 +27,7 @@ export class SinglePanel extends Component {
   }
 
   renderPanelContent (type) {
-    const { mapProperties, dispatch, mapId, drawProperties, panelsActions, panelsProperties, adagucProperties, urls, adagucActions, referenceTime } = this.props;
+    const { recentTriggerProperties, mapProperties, dispatch, mapId, drawProperties, panelsActions, panelsProperties, adagucProperties, urls, adagucActions, referenceTime } = this.props;
     const { activePanelId } = panelsProperties;
     const { cursor } = adagucProperties;
     const adaStart = moment.utc(adagucProperties.timeDimension).startOf('hour');
@@ -44,7 +44,7 @@ export class SinglePanel extends Component {
             }
           }} time={adaStart} style={{ height: '100%', width: '100%', marginLeft: '-3.6rem', marginRight: '1.4rem' }} />;
       default:
-        return <Adaguc drawActions={this.props.drawActions} mapProperties={mapProperties}
+        return <Adaguc drawActions={this.props.drawActions} mapProperties={mapProperties} recentTriggerProperties={recentTriggerProperties}
           adagucActions={adagucActions} adagucProperties={adagucProperties} panelsProperties={panelsProperties} drawProperties={drawProperties}
           panelsActions={panelsActions} mapId={mapId} urls={urls} dispatch={dispatch} mapActions={this.props.mapActions} active={mapId === activePanelId} />;
     }
@@ -313,6 +313,7 @@ SinglePanel.propTypes = {
   drawProperties: PropTypes.object.isRequired,
   panelsProperties: PropTypes.object.isRequired,
   adagucProperties: PropTypes.object.isRequired,
+  recentTriggerProperties: PropTypes.array.isRequired,
   mapId: PropTypes.number.isRequired,
   drawActions: PropTypes.object.isRequired,
   panelsActions: PropTypes.object.isRequired,
@@ -333,7 +334,8 @@ MapPanel.propTypes = {
   dispatch: PropTypes.func.isRequired,
   panelsActions: PropTypes.object,
   user: PropTypes.object,
-  isLoggedIn: PropTypes.bool
+  isLoggedIn: PropTypes.bool,
+  recentTriggerProperties: PropTypes.array.isRequired
 };
 
 export default MapPanel;

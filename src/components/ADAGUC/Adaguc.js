@@ -66,8 +66,9 @@ export default class Adaguc extends PureComponent {
 
   /* istanbul ignore next */
   adagucBeforeDraw (ctx) {
-    const { adagucProperties } = this.props;
-    const { triggerLocations } = adagucProperties;
+    const { recentTriggerProperties } = this.props;
+
+    const { triggerLocations } = recentTriggerProperties || [];
     if (!triggerLocations || triggerLocations.length === 0) {
       return;
     }
@@ -537,6 +538,7 @@ Adaguc.propTypes = {
   panelsActions: PropTypes.object,
   adagucProperties: PropTypes.object,
   mapProperties: PropTypes.object,
+  recentTriggerProperties: PropTypes.array,
   adagucActions: PropTypes.object,
   mapActions: PropTypes.object,
   panelsProperties: PropTypes.object,

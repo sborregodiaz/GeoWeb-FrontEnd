@@ -3,12 +3,12 @@ import { Button, Col, Row, Badge, Card, CardHeader, CardBody } from 'reactstrap'
 import Moment from 'react-moment';
 import moment from 'moment';
 import Icon from 'react-fa';
-import CollapseOmni from '../components/CollapseOmni';
+import CollapseOmni from '../CollapseOmni';
 import PropTypes from 'prop-types';
 import axios from 'axios';
 const DATE_TIME_FORMAT = 'YYYY MMM DD - HH:mm UTC';
 
-class TriggerCategory extends Component {
+class OldTriggerCategory extends Component {
   constructor (props) {
     super(props);
     this.handleTriggerClick = this.handleTriggerClick.bind(this);
@@ -133,7 +133,7 @@ class TriggerCategory extends Component {
   }
 }
 
-TriggerCategory.propTypes = {
+OldTriggerCategory.propTypes = {
   adagucProperties: PropTypes.object,
   actions       : PropTypes.object,
   dispatch      : PropTypes.func,
@@ -149,4 +149,4 @@ TriggerCategory.propTypes = {
   })
 };
 
-export default TriggerCategory;
+export default OldTriggerCategory;
