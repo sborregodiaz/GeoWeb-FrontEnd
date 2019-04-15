@@ -3,9 +3,7 @@ language: node_js
 node_js:
   - "8"
 
-cache:
-  directories:
-    - node_modules
+cache: npm
 
 stages:
   # - test
@@ -22,5 +20,6 @@ jobs:
         - npm install
         - npm run clean
         - ls -la
-      #  - echo "{\"version\": \"sprint_0.XX.Y\",\"commit_id\":\"`git ls-remote https://github.com/KNMI/GeoWeb-FrontEnd.git rev-parse HEAD | awk '{print $1}'`\" }" > ./config/config.json
-      #  - npm run deploy:prod-quick
+        - echo "{\"version\": \"sprint_0.XX.Y\",\"commit_id\":\"`git ls-remote https://github.com/KNMI/GeoWeb-FrontEnd.git rev-parse HEAD | awk '{print $1}'`\" }" > config/config.json
+        - npm run deploy:prod-quick
+        - ls -la
