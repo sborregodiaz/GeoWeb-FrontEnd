@@ -1,11 +1,19 @@
+services: docker
 language: node_js
 node_js:
-  - "node"
-cache:
-  directories:
-  - node_modules
-install:
-  - npm install
-script:
-  - npm test
+  - "8"
 
+cache: npm
+
+stages:
+  - test
+  - name: build
+    if: branch = master
+
+jobs:
+  include:
+    - stage: test
+      install: npm install
+      script: npm test
+    - stage: build
+      script: echo "hello world"
