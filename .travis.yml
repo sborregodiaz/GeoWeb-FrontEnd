@@ -20,6 +20,6 @@ jobs:
         - npm install
         - npm run clean
         - ls -la
-        - "echo test > config/config.json"
+        - "echo {\"version\": \"sprint_0.XX.Y\",\"commit_id\":\"$TRAVIS_COMMIT\" } > config/config.json"
         - npm run deploy:prod-quick
         - ls -la
