@@ -19,5 +19,5 @@ jobs:
       script:
         - npm install
         - npm run clean
-        - echo "{\"version\": \"sprint_0.XX.Y\",\"commit_id\":\"`git ls-remote https://github.com/KNMI/GeoWeb-FrontEnd.git rev-parse HEAD | awk '{print $1}'`\" }" > config/config.json
+        - echo "{\"version\": \"sprint_0.XX.Y\",\"commit_id\":\"`git ls-remote https://github.com/KNMI/GeoWeb-FrontEnd.git rev-parse HEAD | awk '{print $1}'`\" }" > ./config/config.json
         - npm run deploy:prod-quick
