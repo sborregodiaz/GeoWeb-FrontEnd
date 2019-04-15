@@ -7,6 +7,8 @@ cache: npm
 
 stages:
   # - test
+  - name: compile
+    if: branch = master
   - name: build
     if: branch = master
 
@@ -15,11 +17,16 @@ jobs:
     # - stage: test
     #   install: npm install
     #   script: npm test
-    - stage: build
+    - stage: compile
       script:
         - npm install
         - npm run clean
         - ls -la
         - "echo {\"version\": \"sprint_0.XX.Y\",\"commit_id\":\"$TRAVIS_COMMIT\" } > config/config.json"
         - npm run deploy:prod-quick
-        - ls -la
+      cache:
+        directories:
+          - dist
+    - stage: build
+      script:
+        - ls -la dist/
